@@ -20,7 +20,7 @@
 - concise, **node.js style** API for [WebRTC](https://en.wikipedia.org/wiki/WebRTC)
 - **works in node and the browser!**
 - supports **video/voice streams**
-- supports **data channel**
+- supports multiple **data channels**
   - text and binary data
   - node.js [duplex stream](http://nodejs.org/api/stream.html) interface
 - supports advanced options like:
@@ -286,7 +286,7 @@ If `opts` is specified, then the default options (shown below) will be overridde
 {
   initiator: false,
   channelConfig: {},
-  channelName: '<random string>',
+  channelName: 'default',
   config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:global.stun.twilio.com:3478?transport=udp' }] },
   offerOptions: {},
   answerOptions: {},
@@ -357,6 +357,10 @@ Replace a `MediaStreamTrack` with another track. Must also pass the `MediaStream
 ### `peer.addTransceiver(kind, init)`
 
 Add a `RTCRtpTransceiver` to the connection. Can be used to add transceivers before adding tracks. Automatically called as neccesary by `addTrack`.
+
+### `datachannel = peer.createDataChannel(channelName, channelConfig)`
+
+Used to create additional DataChannel objects. DataChannels are instances of `stream.Duplex`.
 
 ### `peer.destroy([err])`
 
@@ -439,6 +443,10 @@ peer.on('stream', stream => {
 ### `peer.on('track', (track, stream) => {})`
 
 Received a remote audio/video track. Streams may contain multiple tracks.
+
+### `peer.on('datachannel', function (datachannel, channelName) {})`
+
+Received an additional DataChannel. This fires after the remote peer calls `peer.createDataChannel()`.
 
 ### `peer.on('close', () => {})`
 
