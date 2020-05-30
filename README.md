@@ -444,7 +444,7 @@ peer.on('stream', stream => {
 
 Received a remote audio/video track. Streams may contain multiple tracks.
 
-### `peer.on('datachannel', function (datachannel, channelName) {})`
+### `peer.on('datachannel', (datachannel, channelName) => {})`
 
 Received an additional DataChannel. This fires after the remote peer calls `peer.createDataChannel()`.
 
