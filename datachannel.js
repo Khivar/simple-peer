@@ -1,5 +1,4 @@
 const debug = require('debug')('simple-peer')
-const inherits = require('inherits')
 const stream = require('readable-stream')
 
 const MAX_BUFFERED_AMOUNT = 64 * 1024
