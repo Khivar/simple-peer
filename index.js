@@ -422,7 +422,7 @@ class Peer extends DataChannel {
     this._debug('destroy (error: %s)', err && (err.message || err))
 
     this._channels.forEach((channel) => {
-      channel.destroy(err)
+      DataChannel.prototype._destroy.call(channel, err, cb)
     })
 
     this._channels = null
