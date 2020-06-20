@@ -8,18 +8,18 @@ const DataChannel = require('./datachannel')
 const ICECOMPLETE_TIMEOUT = 5 * 1000
 
 // HACK: Filter trickle lines when trickle is disabled #354
-function filterTrickle(sdp) {
+function filterTrickle (sdp) {
   return sdp.replace(/a=ice-options:trickle\s\n/g, '')
 }
 
-function makeError(err, code) {
+function makeError (err, code) {
   if (typeof err === 'string') err = new Error(err)
   if (err.error instanceof Error) err = err.error
   err.code = code
   return err
 }
 
-function warn(message) {
+function warn (message) {
   console.warn(message)
 }
 
@@ -29,7 +29,7 @@ function warn(message) {
  * @param {Object} opts
  */
 class Peer extends DataChannel {
-  constructor(opts) {
+  constructor (opts) {
     super(opts)
 
     this._id = randombytes(4).toString('hex').slice(0, 7)
@@ -68,8 +68,7 @@ class Peer extends DataChannel {
     if (!this._wrtc) {
       if (typeof window === 'undefined') {
         throw makeError('No WebRTC support: Specify `opts.wrtc` option in this environment', 'ERR_WEBRTC_SUPPORT')
-      }
-      else {
+      } else {
         throw makeError('No WebRTC support: Not a supported browser', 'ERR_WEBRTC_SUPPORT')
       }
     }
@@ -91,14 +90,12 @@ class Peer extends DataChannel {
     this._remoteTracks = []
     this._remoteStreams = []
 
-
     this._channels = []
     this._channelNameCounter = 0
 
     try {
       this._pc = new (this._wrtc.RTCPeerConnection)(this.config)
-    }
-    catch (err) {
+    } catch (err) {
       queueMicrotask(() => this.destroy(makeError(err, 'ERR_PC_CONSTRUCTOR')))
       return
     }
@@ -140,8 +137,7 @@ class Peer extends DataChannel {
 
       if (!this._channels[0]._channel) {
         this._setDataChannel(event.channel)
-      }
-      else {
+      } else {
         const channel = new DataChannel(opts)
         channel._setDataChannel(event.channel)
         this._channels.push(channel)
@@ -178,21 +174,20 @@ class Peer extends DataChannel {
 
   // HACK: it's possible channel.readyState is "closing" before peer.destroy() fires
   // https://bugs.chromium.org/p/chromium/issues/detail?id=882743
-  get connected() {
+  get connected () {
     return (this._connected && this._channel.readyState === 'open')
   }
 
-  address() {
+  address () {
     return { port: this.localPort, family: this.localFamily, address: this.localAddress }
   }
 
-  signal(data) {
+  signal (data) {
     if (this.destroyed) throw makeError('cannot signal after peer is destroyed', 'ERR_SIGNALING')
     if (typeof data === 'string') {
       try {
         data = JSON.parse(data)
-      }
-      catch (err) {
+      } catch (err) {
         data = {}
       }
     }
@@ -209,8 +204,7 @@ class Peer extends DataChannel {
     if (data.candidate) {
       if (this._pc.remoteDescription && this._pc.remoteDescription.type) {
         this._addIceCandidate(data.candidate)
-      }
-      else {
+      } else {
         this._pendingCandidates.push(data.candidate)
       }
     }
@@ -235,14 +229,13 @@ class Peer extends DataChannel {
     }
   }
 
-  _addIceCandidate(candidate) {
+  _addIceCandidate (candidate) {
     const iceCandidateObj = new this._wrtc.RTCIceCandidate(candidate)
     this._pc.addIceCandidate(iceCandidateObj)
       .catch((err) => {
         if (!iceCandidateObj.address || iceCandidateObj.address.endsWith('.local')) {
           warn('Ignoring unsupported ICE candidate.')
-        }
-        else {
+        } else {
           this.destroy(makeError(err, 'ERR_ADD_ICE_CANDIDATE'))
         }
       })
@@ -253,21 +246,19 @@ class Peer extends DataChannel {
    * @param {String} kind
    * @param {Object} init
    */
-  addTransceiver(kind, init) {
+  addTransceiver (kind, init) {
     this._debug('addTransceiver()')
 
     if (this.initiator) {
       try {
         this._pc.addTransceiver(kind, init)
         this._needsNegotiation()
-      }
-      catch (err) {
+      } catch (err) {
         this.destroy(makeError(err, 'ERR_ADD_TRANSCEIVER'))
       }
-    }
-    else {
+    } else {
       this.emit('signal', { // request initiator to renegotiate
-        transceiverRequest: { kind, init },
+        transceiverRequest: { kind, init }
       })
     }
   }
@@ -276,7 +267,7 @@ class Peer extends DataChannel {
    * Add a MediaStream to the connection.
    * @param {MediaStream} stream
    */
-  addStream(stream) {
+  addStream (stream) {
     this._debug('addStream()')
 
     stream.getTracks().forEach((track) => {
@@ -289,7 +280,7 @@ class Peer extends DataChannel {
    * @param {MediaStreamTrack} track
    * @param {MediaStream} stream
    */
-  addTrack(track, stream) {
+  addTrack (track, stream) {
     this._debug('addTrack()')
 
     const submap = this._senderMap.get(track) || new Map() // nested Maps map [track, stream] to sender
@@ -299,11 +290,9 @@ class Peer extends DataChannel {
       submap.set(stream, sender)
       this._senderMap.set(track, submap)
       this._needsNegotiation()
-    }
-    else if (sender.removed) {
+    } else if (sender.removed) {
       throw makeError('Track has been removed. You should enable/disable tracks that you want to re-add.', 'ERR_SENDER_REMOVED')
-    }
-    else {
+    } else {
       throw makeError('Track has already been added to that stream.', 'ERR_SENDER_ALREADY_ADDED')
     }
   }
@@ -314,7 +303,7 @@ class Peer extends DataChannel {
    * @param {MediaStreamTrack} newTrack
    * @param {MediaStream} stream
    */
-  replaceTrack(oldTrack, newTrack, stream) {
+  replaceTrack (oldTrack, newTrack, stream) {
     this._debug('replaceTrack()')
 
     const submap = this._senderMap.get(oldTrack)
@@ -326,8 +315,7 @@ class Peer extends DataChannel {
 
     if (sender.replaceTrack != null) {
       sender.replaceTrack(newTrack)
-    }
-    else {
+    } else {
       this.destroy(makeError('replaceTrack is not supported in this browser', 'ERR_UNSUPPORTED_REPLACETRACK'))
     }
   }
@@ -337,7 +325,7 @@ class Peer extends DataChannel {
    * @param {MediaStreamTrack} track
    * @param {MediaStream} stream
    */
-  removeTrack(track, stream) {
+  removeTrack (track, stream) {
     this._debug('removeSender()')
 
     const submap = this._senderMap.get(track)
@@ -348,12 +336,10 @@ class Peer extends DataChannel {
     try {
       sender.removed = true
       this._pc.removeTrack(sender)
-    }
-    catch (err) {
+    } catch (err) {
       if (err.name === 'NS_ERROR_UNEXPECTED') {
         this._sendersAwaitingStable.push(sender) // HACK: Firefox must wait until (signalingState === stable) https://bugzilla.mozilla.org/show_bug.cgi?id=1133874
-      }
-      else {
+      } else {
         this.destroy(makeError(err, 'ERR_REMOVE_TRACK'))
       }
     }
@@ -364,7 +350,7 @@ class Peer extends DataChannel {
    * Remove a MediaStream from the connection.
    * @param {MediaStream} stream
    */
-  removeStream(stream) {
+  removeStream (stream) {
     this._debug('removeSenders()')
 
     stream.getTracks().forEach((track) => {
@@ -372,7 +358,7 @@ class Peer extends DataChannel {
     })
   }
 
-  _needsNegotiation() {
+  _needsNegotiation () {
     this._debug('_needsNegotiation')
     if (this._batchedNegotiation) return // batch synchronous renegotiations
     this._batchedNegotiation = true
@@ -383,27 +369,24 @@ class Peer extends DataChannel {
     })
   }
 
-  negotiate() {
+  negotiate () {
     if (this.initiator) {
       if (this._isNegotiating) {
         this._queuedNegotiation = true
         this._debug('already negotiating, queueing')
-      }
-      else {
+      } else {
         this._debug('start negotiation')
         setTimeout(() => { // HACK: Chrome crashes if we immediately call createOffer
           this._createOffer()
         }, 0)
       }
-    }
-    else if (this._isNegotiating) {
+    } else if (this._isNegotiating) {
       this._queuedNegotiation = true
       this._debug('already negotiating, queueing')
-    }
-    else {
+    } else {
       this._debug('requesting negotiation from initiator')
       this.emit('signal', { // request initiator to renegotiate
-        renegotiate: true,
+        renegotiate: true
       })
     }
     this._isNegotiating = true
@@ -412,11 +395,11 @@ class Peer extends DataChannel {
   // TODO: Delete this method once readable-stream is updated to contain a default
   // implementation of destroy() that automatically calls _destroy()
   // See: https://github.com/nodejs/readable-stream/issues/283
-  destroy(err) {
+  destroy (err) {
     this._destroy(err, () => {})
   }
 
-  _destroy(err, cb) {
+  _destroy (err, cb) {
     if (this.destroyed) return
 
     this._debug('destroy (error: %s)', err && (err.message || err))
@@ -439,8 +422,7 @@ class Peer extends DataChannel {
     if (this._pc) {
       try {
         this._pc.close()
-      }
-      catch (err) {}
+      } catch (err) {}
 
       this._pc.oniceconnectionstatechange = null
       this._pc.onicegatheringstatechange = null
@@ -452,7 +434,7 @@ class Peer extends DataChannel {
     this._pc = null
   }
 
-  _startIceCompleteTimeout() {
+  _startIceCompleteTimeout () {
     if (this.destroyed) return
     if (this._iceCompleteTimer) return
     this._debug('started iceComplete timeout')
@@ -466,7 +448,7 @@ class Peer extends DataChannel {
     }, this.iceCompleteTimeout)
   }
 
-  _createOffer() {
+  _createOffer () {
     if (this.destroyed) return
 
     this._pc.createOffer(this.offerOptions)
@@ -481,7 +463,7 @@ class Peer extends DataChannel {
           this._debug('signal')
           this.emit('signal', {
             type: signal.type,
-            sdp: signal.sdp,
+            sdp: signal.sdp
           })
         }
 
@@ -505,7 +487,7 @@ class Peer extends DataChannel {
       })
   }
 
-  _requestMissingTransceivers() {
+  _requestMissingTransceivers () {
     if (this._pc.getTransceivers) {
       this._pc.getTransceivers().forEach((transceiver) => {
         if (!transceiver.mid && transceiver.sender.track && !transceiver.requested) {
@@ -516,7 +498,7 @@ class Peer extends DataChannel {
     }
   }
 
-  _createAnswer() {
+  _createAnswer () {
     if (this.destroyed) return
 
     this._pc.createAnswer(this.answerOptions)
@@ -531,7 +513,7 @@ class Peer extends DataChannel {
           this._debug('signal')
           this.emit('signal', {
             type: signal.type,
-            sdp: signal.sdp,
+            sdp: signal.sdp
           })
           if (!this.initiator) this._requestMissingTransceivers()
         }
@@ -555,14 +537,14 @@ class Peer extends DataChannel {
       })
   }
 
-  _onConnectionStateChange() {
+  _onConnectionStateChange () {
     if (this.destroyed) return
     if (this._pc.connectionState === 'failed') {
       this.destroy(makeError('Connection failed.', 'ERR_CONNECTION_FAILURE'))
     }
   }
 
-  _onIceStateChange() {
+  _onIceStateChange () {
     if (this.destroyed) return
     const { iceConnectionState } = this._pc
     const { iceGatheringState } = this._pc
@@ -570,7 +552,7 @@ class Peer extends DataChannel {
     this._debug(
       'iceStateChange (connection: %s) (gathering: %s)',
       iceConnectionState,
-      iceGatheringState,
+      iceGatheringState
     )
     this.emit('iceStateChange', iceConnectionState, iceGatheringState)
 
@@ -586,7 +568,7 @@ class Peer extends DataChannel {
     }
   }
 
-  getStats(cb) {
+  getStats (cb) {
     // statreports can come with a value array instead of properties
     const flattenValues = (report) => {
       if (Object.prototype.toString.call(report.values) === '[object Array]') {
@@ -609,8 +591,7 @@ class Peer extends DataChannel {
         }, err => cb(err))
 
     // Single-parameter callback-based getStats() (non-standard)
-    }
-    else if (this._pc.getStats.length > 0) {
+    } else if (this._pc.getStats.length > 0) {
       this._pc.getStats((res) => {
         // If we destroy connection in `connect` callback this code might happen to run when actual connection is already closed
         if (this.destroyed) return
@@ -631,13 +612,12 @@ class Peer extends DataChannel {
 
     // Unknown browser, skip getStats() since it's anyone's guess which style of
     // getStats() they implement.
-    }
-    else {
+    } else {
       cb(null, [])
     }
   }
 
-  _maybeReady() {
+  _maybeReady () {
     this._debug('maybeReady pc %s channel %s', this._pcReady, this._channelReady)
     if (this._connected || this._connecting || !this._pcReady || !this._channelReady) return
 
@@ -681,13 +661,11 @@ class Peer extends DataChannel {
             // Spec
             this.localAddress = local.ip || local.address
             this.localPort = Number(local.port)
-          }
-          else if (local && local.ipAddress) {
+          } else if (local && local.ipAddress) {
             // Firefox
             this.localAddress = local.ipAddress
             this.localPort = Number(local.portNumber)
-          }
-          else if (typeof selectedCandidatePair.googLocalAddress === 'string') {
+          } else if (typeof selectedCandidatePair.googLocalAddress === 'string') {
             // TODO: remove this once Chrome 58 is released
             local = selectedCandidatePair.googLocalAddress.split(':')
             this.localAddress = local[0]
@@ -703,13 +681,11 @@ class Peer extends DataChannel {
             // Spec
             this.remoteAddress = remote.ip || remote.address
             this.remotePort = Number(remote.port)
-          }
-          else if (remote && remote.ipAddress) {
+          } else if (remote && remote.ipAddress) {
             // Firefox
             this.remoteAddress = remote.ipAddress
             this.remotePort = Number(remote.portNumber)
-          }
-          else if (typeof selectedCandidatePair.googRemoteAddress === 'string') {
+          } else if (typeof selectedCandidatePair.googRemoteAddress === 'string') {
             // TODO: remove this once Chrome 58 is released
             remote = selectedCandidatePair.googRemoteAddress.split(':')
             this.remoteAddress = remote[0]
@@ -721,7 +697,7 @@ class Peer extends DataChannel {
 
           this._debug(
             'connect local: %s:%s remote: %s:%s',
-            this.localAddress, this.localPort, this.remoteAddress, this.remotePort,
+            this.localAddress, this.localPort, this.remoteAddress, this.remotePort
           )
         }
 
@@ -733,8 +709,8 @@ class Peer extends DataChannel {
 
           // Old implementations
           if (
-            (item.type === 'googCandidatePair' && item.googActiveConnection === 'true')
-            || ((item.type === 'candidatepair' || item.type === 'candidate-pair') && item.selected)
+            (item.type === 'googCandidatePair' && item.googActiveConnection === 'true') ||
+            ((item.type === 'candidatepair' || item.type === 'candidate-pair') && item.selected)
           ) {
             setSelectedCandidatePair(item)
           }
@@ -756,7 +732,7 @@ class Peer extends DataChannel {
     findCandidatePair()
   }
 
-  _onSignalingStateChange() {
+  _onSignalingStateChange () {
     if (this.destroyed) return
 
     if (this._pc.signalingState === 'stable' && !this._firstStable) {
@@ -785,18 +761,17 @@ class Peer extends DataChannel {
     this.emit('signalingStateChange', this._pc.signalingState)
   }
 
-  _onIceCandidate(event) {
+  _onIceCandidate (event) {
     if (this.destroyed) return
     if (event.candidate && this.trickle) {
       this.emit('signal', {
         candidate: {
           candidate: event.candidate.candidate,
           sdpMLineIndex: event.candidate.sdpMLineIndex,
-          sdpMid: event.candidate.sdpMid,
-        },
+          sdpMid: event.candidate.sdpMid
+        }
       })
-    }
-    else if (!event.candidate && !this._iceComplete) {
+    } else if (!event.candidate && !this._iceComplete) {
       this._iceComplete = true
       this.emit('_iceComplete')
     }
@@ -806,7 +781,7 @@ class Peer extends DataChannel {
     }
   }
 
-  _onTrack(event) {
+  _onTrack (event) {
     if (this.destroyed) return
 
     event.streams.forEach((eventStream) => {
@@ -815,7 +790,7 @@ class Peer extends DataChannel {
 
       this._remoteTracks.push({
         track: event.track,
-        stream: eventStream,
+        stream: eventStream
       })
 
       if (this._remoteStreams.some(remoteStream => remoteStream.id === eventStream.id)) return // Only fire one 'stream' event, even though there may be multiple tracks per stream
@@ -827,7 +802,7 @@ class Peer extends DataChannel {
     })
   }
 
-  createDataChannel(channelName, channelConfig, opts) {
+  createDataChannel (channelName, channelConfig, opts) {
     const channel = new DataChannel(opts)
     channelName = this._makeUniqueChannelName(channelName)
     channel._setDataChannel(this._pc.createDataChannel(channelName, channelConfig))
@@ -835,7 +810,7 @@ class Peer extends DataChannel {
     return channel
   }
 
-  _makeUniqueChannelName(channelName) {
+  _makeUniqueChannelName (channelName) {
     channelName = channelName || ''
     if (channelName.indexOf('@') !== -1) {
       return this.destroy(makeError('channelName cannot include "@" character', 'INVALID_CHANNEL_NAME'))
@@ -843,7 +818,7 @@ class Peer extends DataChannel {
     return `${channelName}@${this._id}${this._channelNameCounter++}`
   }
 
-  _debug() {
+  _debug () {
     const args = [].slice.call(arguments)
     args[0] = `[${this._id}] ${args[0]}`
     debug.apply(null, args)
@@ -860,13 +835,13 @@ Peer.WEBRTC_SUPPORT = !!getBrowserRTC()
 Peer.config = {
   iceServers: [
     {
-      urls: 'stun:stun.l.google.com:19302',
+      urls: 'stun:stun.l.google.com:19302'
     },
     {
-      urls: 'stun:global.stun.twilio.com:3478?transport=udp',
-    },
+      urls: 'stun:global.stun.twilio.com:3478?transport=udp'
+    }
   ],
-  sdpSemantics: 'unified-plan',
+  sdpSemantics: 'unified-plan'
 }
 
 Peer.channelConfig = {}

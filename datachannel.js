@@ -5,7 +5,7 @@ const MAX_BUFFERED_AMOUNT = 64 * 1024
 const CHANNEL_CLOSING_TIMEOUT = 5 * 1000
 const CHANNEL_CLOSE_DELAY = 3 * 1000
 
-function makeError(err, code) {
+function makeError (err, code) {
   if (typeof err === 'string') err = new Error(err)
   if (err.error instanceof Error) err = err.error
   err.code = code
@@ -13,9 +13,9 @@ function makeError(err, code) {
 }
 
 class DataChannel extends stream.Duplex {
-  constructor(opts) {
+  constructor (opts) {
     opts = Object.assign({
-      allowHalfOpen: false,
+      allowHalfOpen: false
     }, opts)
 
     super(opts)
@@ -35,18 +35,17 @@ class DataChannel extends stream.Duplex {
       if (this._channel && this._channel.readyState === 'closing') {
         if (isClosing) this._onChannelClose() // closing timed out: equivalent to onclose firing
         isClosing = true
-      }
-      else {
+      } else {
         isClosing = false
       }
     }, CHANNEL_CLOSING_TIMEOUT)
   }
 
-  get bufferSize() {
+  get bufferSize () {
     return (this._channel && this._channel.bufferedAmount) || 0
   }
 
-  _setDataChannel(channel) {
+  _setDataChannel (channel) {
     this._channel = channel
     this._channel.binaryType = 'arraybuffer'
 
@@ -55,7 +54,6 @@ class DataChannel extends stream.Duplex {
     }
 
     [this.channelName] = this._channel.label.split('@')
-
 
     this._channel.onmessage = (event) => {
       this._onChannelMessage(event)
@@ -79,27 +77,24 @@ class DataChannel extends stream.Duplex {
     this.once('finish', this._onFinishBound)
   }
 
-  _read() {}
+  _read () {}
 
-  _write(chunk, encoding, cb) {
+  _write (chunk, encoding, cb) {
     if (this.destroyed) return cb(makeError('cannot write after channel is destroyed', 'ERR_DATA_CHANNEL'))
 
     if (this._channel && this._channel.readyState === 'open') {
       try {
         this.send(chunk)
-      }
-      catch (err) {
+      } catch (err) {
         return this.destroy(makeError(err, 'ERR_DATA_CHANNEL'))
       }
       if (this._channel.bufferedAmount > MAX_BUFFERED_AMOUNT) {
         this._debug('start backpressure: bufferedAmount %d', this._channel.bufferedAmount)
         this._cb = cb
-      }
-      else {
+      } else {
         cb(null)
       }
-    }
-    else {
+    } else {
       this._debug('write before connect')
       this._chunk = chunk
       this._cb = cb
@@ -108,7 +103,7 @@ class DataChannel extends stream.Duplex {
 
   // When stream finishes writing, close socket. Half open connections are not
   // supported.
-  _onFinish() {
+  _onFinish () {
     if (this.destroyed) return
 
     // Wait a bit before destroying so the socket flushes.
@@ -119,27 +114,26 @@ class DataChannel extends stream.Duplex {
 
     if (!this._channel || this._channel.readyState === 'open') {
       destroySoon()
-    }
-    else {
+    } else {
       this.once('connect', destroySoon)
     }
   }
 
-  _onInterval() {
+  _onInterval () {
     if (!this._cb || !this._channel || this._channel.bufferedAmount > MAX_BUFFERED_AMOUNT) {
       return
     }
     this._onChannelBufferedAmountLow()
   }
 
-  _onChannelMessage(event) {
+  _onChannelMessage (event) {
     if (this.destroyed) return
     let { data } = event
     if (data instanceof ArrayBuffer) data = Buffer.from(data)
     this.push(data)
   }
 
-  _onChannelBufferedAmountLow() {
+  _onChannelBufferedAmountLow () {
     if (this.destroyed || !this._cb) return
     this._debug('ending backpressure: bufferedAmount %d', this._channel.bufferedAmount)
     const cb = this._cb
@@ -147,7 +141,7 @@ class DataChannel extends stream.Duplex {
     cb(null)
   }
 
-  _onChannelOpen() {
+  _onChannelOpen () {
     this._debug('on channel open', this.channelName)
     this.emit('open')
     this._sendChunk()
@@ -157,20 +151,19 @@ class DataChannel extends stream.Duplex {
     }, CHANNEL_CLOSE_DELAY)
   }
 
-  _onChannelClose() {
+  _onChannelClose () {
     if (this.destroyed) return
     this._debug('on channel close')
     this.destroy()
   }
 
-  _sendChunk() { // called when peer connects or self._channel set
+  _sendChunk () { // called when peer connects or self._channel set
     if (this.destroyed) return
 
     if (this._chunk) {
       try {
         this.send(this._chunk)
-      }
-      catch (err) {
+      } catch (err) {
         return this.destroy(makeError(err, 'ERR_DATA_CHANNEL'))
       }
       this._chunk = null
@@ -189,12 +182,11 @@ class DataChannel extends stream.Duplex {
     }
   }
 
-
   /**
  * Send text/binary data to the remote peer.
  * @param {ArrayBufferView|ArrayBuffer|Buffer|string|Blob} chunk
  */
-  send(chunk) {
+  send (chunk) {
     if (!this._channel) {
       if (this.destroyed) return this.destroy(makeError('cannot send after channel is destroyed', 'ERR_DATA_CHANNEL'))
       return this.destroy(makeError('cannot send before channel is created - use write() to buffer', 'ERR_DATA_CHANNEL'))
@@ -205,11 +197,11 @@ class DataChannel extends stream.Duplex {
   // TODO: Delete this method once readable-stream is updated to contain a default
   // implementation of destroy() that automatically calls _destroy()
   // See: https://github.com/nodejs/readable-stream/issues/283
-  destroy(err) {
+  destroy (err) {
     this._destroy(err, () => {})
   }
 
-  _destroy(err, cb) {
+  _destroy (err, cb) {
     if (this.destroyed) return
 
     this._debug('destroy (error: %s)', err && (err.message || err))
@@ -218,8 +210,7 @@ class DataChannel extends stream.Duplex {
       // HACK: Safari sometimes cannot close channels immediately after opening them
       if (this._fresh) {
         setTimeout(this._close, CHANNEL_CLOSE_DELAY)
-      }
-      else {
+      } else {
         this._close()
       }
 
@@ -255,14 +246,13 @@ class DataChannel extends stream.Duplex {
     cb()
   }
 
-  _close() {
+  _close () {
     try {
       this._channel.close()
-    }
-    catch (err) {}
+    } catch (err) {}
   }
 
-  _debug() {
+  _debug () {
     const self = this
     const args = [].slice.call(arguments)
     args[0] = `[${self._id}] ${args[0]}`
