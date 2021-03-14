@@ -241,9 +241,11 @@ class DataChannel extends stream.Duplex {
     if (this._onFinishBound) this.removeListener('finish', this._onFinishBound)
     this._onFinishBound = null
 
-    if (err) this.emit('error', err)
-    this.emit('close')
-    cb()
+    if (this.constructor.name !== 'Peer') {
+      if (err) this.emit('error', err)
+      this.emit('close')
+      cb()
+    }
   }
 
   _close () {

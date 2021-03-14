@@ -29,7 +29,7 @@ function warn (message) {
  * @param {Object} opts
  */
 class Peer extends DataChannel {
-  constructor (opts) {
+  constructor (opts = {}) {
     super(opts)
 
     this._id = randombytes(4).toString('hex').slice(0, 7)
@@ -432,6 +432,10 @@ class Peer extends DataChannel {
       this._pc.ondatachannel = null
     }
     this._pc = null
+
+    if (err) this.emit('error', err)
+    this.emit('close')
+    cb()
   }
 
   _startIceCompleteTimeout () {
